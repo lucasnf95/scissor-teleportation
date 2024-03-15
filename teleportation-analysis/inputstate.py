@@ -1,6 +1,8 @@
 
 import numpy as np
+from scipy.fft import fft, fftfreq
 import os
+import matplotlib
 import matplotlib.pyplot as plt
 from qopt import lecroy
 import functions
@@ -13,6 +15,30 @@ class inputstate:
         self.mf = modefunction
         self.input_plot = input_plot
         self.input_rho = self.reconstruct_input_state()
+        
+    def check_clearance(self, input_data, elec, plot = True):
+        tr000 = input_data['000']
+        trelec = elec
+        freq = fftfreq(502, .002)
+
+        plt.figure(figsize=(10,6))
+        plt.plot(freq[:60], 10*np.log10((np.abs(fft(tr000))**2).mean(0))[:60], color='green', label='Signal')
+        plt.plot(freq[:60], 10*np.log10((np.abs(fft(trelec))**2).mean(0))[:60], color='blue', label='Electronic')
+        plt.legend()
+        plt.grid()
+        plt.xlabel('MHz')
+        plt.ylabel('Noise power [dB]')
+
+        # Calculate clearance for a desired frequency
+        freq_clear = 10
+        min_f = [np.abs(f - 10) for f in freq[:60]]
+        min_p = np.where(min_f == np.min(min_f))[0][0]
+
+        tr_clear = 10*np.log10((np.abs(fft(tr000))**2).mean(0))[:60][min_p]
+        elec_clear = 10*np.log10((np.abs(fft(trelec))**2).mean(0))[:60][min_p]
+
+        self.clearance = tr_clear - elec_clear
+        print('Clearance at %.1f MHz is %.2f dB' %(freq_clear, self.clearance))
 
     def import_input_files(self):
         '''
@@ -33,12 +59,14 @@ class inputstate:
         input_files_090 = np.array([os.path.join(self.input_folder, f) for f in sorted(os.listdir(self.input_folder)) if "C1input090" in f])
         samplehold_files_000 = np.array([os.path.join(self.input_folder, f) for f in sorted(os.listdir(self.input_folder)) if "C3input000" in f])
         samplehold_files_090 = np.array([os.path.join(self.input_folder, f) for f in sorted(os.listdir(self.input_folder)) if "C3input090" in f])
-
+        elec_files = np.array([os.path.join(self.input_folder, f) for f in sorted(os.listdir(self.input_folder)) if "C1elec" in f])
+        
         # Read first file
         input_000 = lecroy.read(input_files_000[0])[2]
         input_090 = lecroy.read(input_files_090[0])[2]
         samplehold_000 = lecroy.read(samplehold_files_000[0])[2]
         samplehold_090 = lecroy.read(samplehold_files_090[0])[2]
+        elec = lecroy.read(elec_files[0])[2]
 
         # Read rest of the files
         if len(input_files_000) > 1:
@@ -54,6 +82,8 @@ class inputstate:
         samplehold = {'000': samplehold_000, '090': samplehold_090}
         input_meta = lecroy.read(input_files_000[0])[0]
 
+        self.check_clearance(input_data, elec, plot = False)
+        
         return input_data, samplehold, input_meta
 
     def read_folder(self):
