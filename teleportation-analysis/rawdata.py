@@ -236,7 +236,7 @@ class rawdata:
             H_corr = homodyne
             V_corr = vacuum
 
-        self.mf = self.plot_mode_function(homodyne)
+        self.mf = self.plot_mode_function(homodyne, homodyne_g = homodyne_g, homodyne_k = homodyne_k, homodyne_time_delay = homodyne_time_delay)
 
         if check_fluctuations:
             self.fluctuations_conference(homodyne, vacuum)
