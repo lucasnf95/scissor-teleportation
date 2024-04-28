@@ -283,7 +283,7 @@ def apply_maximum_likelihood(data, dimension, tomography_phases = ['000', '030',
     return rho
 
 def calculate_output_state(data, input_rho, success_rate, dimension, plot = True, verbose = True):
-    rho = apply_maximum_likelihood(data, dimension)
+    rho = apply_maximum_likelihood(data, dimension)        
     
     # Calculate |alpha| and theta
     annihilation = a_operator(dimension)

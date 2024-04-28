@@ -9,11 +9,13 @@ import functions
 
 class inputstate:
     
-    def __init__(self, input_folder, dimension, modefunction, input_plot = True):
+    def __init__(self, input_folder, dimension, modefunction, input_plot = True, sweep_angle = False, losses = False):
         self.input_folder = input_folder
         self.dimension = dimension
         self.mf = modefunction
         self.input_plot = input_plot
+        self.sweep_angle = sweep_angle
+        self.losses = losses
         self.input_rho = self.reconstruct_input_state()
         
     def check_clearance(self, input_data, elec, plot = True):
@@ -201,7 +203,7 @@ class inputstate:
             angle_rad = np.angle(q_mean+1j*p_mean)
             angle_deg = angle_rad*180/np.pi
             ### Take a better look into this
-            input_displacement = np.exp(1j*angle_rad)/np.sqrt(2)*(q_mean+1j*p_mean)
+            input_displacement = (q_mean+1j*p_mean)*np.exp(1j*angle_rad)/np.sqrt(2)
             block_alpha.append(np.abs(input_displacement))
             block_angle.append(angle_deg)
 
@@ -216,9 +218,22 @@ class inputstate:
     def reconstruct_input_state(self):
         self.input_alpha, self.relay_theta, self.input_angle = self.read_folder()
 
+        if self.losses:
+            eta_a = 0.22
+            eta_b = 0.15
+            g = np.sqrt(eta_a/eta_b)
+            self.input_alpha = g*self.input_alpha
+        
         # Construct density matrix of input state
-        input_psi = functions.psi_coherent(self.input_alpha, self.relay_theta + self.input_angle, self.dimension)
-        input_rho = functions.rho_psi(input_psi)
+        if self.sweep_angle:
+            extra_angle = np.linspace(0, 360, 20)
+            input_rho = np.zeros((len(extra_angle), self.dimension+1, self. dimension+1), dtype = complex)
+            for j, angle in enumerate(extra_angle):
+                input_psi = functions.psi_coherent(self.input_alpha, self.relay_theta + self.input_angle + angle, self.dimension)
+                input_rho[j] = functions.rho_psi(input_psi)
+        else:   
+            input_psi = functions.psi_coherent(self.input_alpha, self.relay_theta + self.input_angle + 180, self.dimension)
+            input_rho = functions.rho_psi(input_psi)
 
         # Plots for the input state
         number = np.linspace(0, self.dimension, self.dimension+1)
